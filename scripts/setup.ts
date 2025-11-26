@@ -166,7 +166,40 @@ async function main() {
   );
   const selectedTheme = Object.keys(themes)[themeIndex] as ThemeKey;
 
-  console.log(c('bright', '\n🗄️  Step 3: Supabase Setup\n'));
+  console.log(c('bright', '\n📄 Step 3: Pre-built Screens\n'));
+  const includeAuthScreens = await promptYesNo('Include pre-built auth screens?');
+
+  let authProviders: string[] = [];
+  if (includeAuthScreens) {
+    console.log(c('cyan', '\nSelect authentication methods (you can choose multiple):'));
+
+    const emailPassword = await promptYesNo('  • Email/Password');
+    if (emailPassword) authProviders.push('email');
+
+    const magicLink = await promptYesNo('  • Email Magic Link (passwordless)');
+    if (magicLink) authProviders.push('magic-link');
+
+    const google = await promptYesNo('  • Google Sign-In');
+    if (google) authProviders.push('google');
+
+    const apple = await promptYesNo('  • Apple Sign-In');
+    if (apple) authProviders.push('apple');
+
+    const phone = await promptYesNo('  • Phone/SMS OTP');
+    if (phone) authProviders.push('phone');
+
+    if (authProviders.length === 0) {
+      console.log(c('yellow', '\n→ No auth providers selected, defaulting to Email/Password'));
+      authProviders = ['email'];
+    }
+
+    console.log(c('green', `\n✓ Selected providers: ${authProviders.join(', ')}`));
+  }
+
+  const includeProfileScreen = await promptYesNo('Include pre-built profile screen (avatar, name, logout, delete)?');
+  const includeHomeScreen = await promptYesNo('Include generic home landing screen?');
+
+  console.log(c('bright', '\n🗄️  Step 4: Supabase Setup\n'));
   const supabaseChoice = await select(
     'Supabase setup:',
     [
@@ -192,7 +225,7 @@ async function main() {
   }
 
   // Create configuration
-  console.log(c('bright', '\n⚙️  Step 4: Generating Configuration Files\n'));
+  console.log(c('bright', '\n⚙️  Step 5: Generating Configuration Files\n'));
 
   // Create .env file
   const envContent = `# Supabase Configuration
@@ -265,9 +298,20 @@ EXPO_PUBLIC_PROJECT_NAME=expo-app
   writeFileSync('global.css', globalCss);
   console.log(c('green', `✓ Created global.css with ${theme.name} theme`));
 
+  // Save auth config for file generation
+  const authConfig = {
+    includeAuthScreens,
+    authProviders,
+    includeProfileScreen,
+    includeHomeScreen,
+  };
+
+  writeFileSync('.auth-config.json', JSON.stringify(authConfig, null, 2));
+  console.log(c('green', '✓ Saved auth configuration'));
+
   // Handle Supabase setup
   if (supabaseChoice === 1 && supabaseProjectRef) {
-    console.log(c('bright', '\n🔗 Step 5: Setting up Supabase\n'));
+    console.log(c('bright', '\n🔗 Step 6: Setting up Supabase\n'));
 
     const hasSupabaseCli = await promptYesNo('Do you have Supabase CLI installed?');
 
@@ -346,7 +390,12 @@ EXPO_PUBLIC_PROJECT_NAME=expo-app
   console.log(c('yellow', '  bun supabase:start '), '- Start local Supabase');
   console.log(c('green', '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
   console.log(c('magenta', '💡 Tip: '), 'Check the README.md for detailed documentation');
-  console.log(c('magenta', '🎨 Theme: '), `Using ${theme.name} - Edit global.css to customize\n`);
+  console.log(c('magenta', '🎨 Theme: '), `Using ${theme.name} - Edit global.css to customize`);
+
+  if (includeAuthScreens) {
+    console.log(c('magenta', '🔐 Auth: '), `Screens configured with ${authProviders.join(', ')} providers`);
+  }
+  console.log();
 }
 
 // Run the setup
